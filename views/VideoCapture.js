@@ -1,17 +1,17 @@
 import React, { Component, Fragment } from 'react'
-import { View, StatusBar, Modal, Text, Image, StyleSheet } from 'react-native'
+import { View, StatusBar, Modal, Text, Image } from 'react-native'
 import { Appbar, Menu, Divider, ActivityIndicator, Colors } from 'react-native-paper'
 import { Camera } from 'expo-camera';
 import * as Permissions from 'expo-permissions';
 import * as MediaLibrary from 'expo-media-library';
 import * as FileSystem from 'expo-file-system';
 import * as SQLite from 'expo-sqlite';
+import { Video } from 'expo-av';
 import Toolbar from '../component/Toolbar';
 import styles from '../styles';
 import App from '../App';
-import Svg, { Circle, Rect, Text as SVGText } from 'react-native-svg';
 
-export default class CameraView extends React.Component {
+export default class VideoCapture extends React.Component {
 
     state = {
         hasAudioPermission: false,
@@ -23,7 +23,6 @@ export default class CameraView extends React.Component {
         capturing: false,
         menuVisible: false,
         savingImage: false,
-        detectedObjects: []
     }
 
     setCameraPermission = hasCameraPermission => this.setState({ hasCameraPermission })
@@ -34,28 +33,42 @@ export default class CameraView extends React.Component {
 
     setCameraType = cameraType => this.setState({ cameraType })
 
+    handleLongCapture = async () => {
+        await this.captureImage()
+        
+    }
+
     handleCaptureIn = () => {
         this.setState({ capturing: true })
     };
   
     handleCaptureOut = () => {
+        console.log('hello world')
         if (this.state.capturing)
             this.camera.stopRecording();
     };
 
     handleShortCapture = async () => {
-        await this.captureImage()
+        // await this.captureImage()
+    }
+
+    onPlaybackStatusUpdate = async (data) => {
+        // console.log(data)
     }
 
     captureImage = async (resolve) => {
         try{
-            var photoData = await this.camera.takePictureAsync();
-    
+            var photoData = await this.camera.recordAsync({
+                quality: Camera.Constants.VideoQuality['720p']
+            });
+
             var savedPhoto = await MediaLibrary.createAssetAsync(photoData.uri)
     
-            // const album = await MediaLibrary.createAlbumAsync('ColorIdentifier', savedPhoto);
+            // var album = await MediaLibrary.createAlbumAsync('ColorIdentifier', savedPhoto, false);
 
-            var { uri , height , width } = savedPhoto;
+            // var movedAsset = await MediaLibrary.getAssetInfoAsync(savedPhoto);
+
+            // console.log(movedAsset)
 
             this.setState({ 
                 capturing: false, 
@@ -65,7 +78,6 @@ export default class CameraView extends React.Component {
             this.setState({
                 modalVisible: true,
             })
-    
           }catch(e){
             console.log(e)
           }
@@ -79,27 +91,36 @@ export default class CameraView extends React.Component {
 
             const data = new FormData();
         
-            data.append("image", {
+            data.append("video", {
                 uri: photo.uri,
                 name: 'sample',
-                type: 'image/jpg'
+                type: 'video/mp4'
             });
 
-            var response = await fetch("http://" + getIpAddress() + "/imgpredict", {
+            var response = await fetch("http://" + getIpAddress() + "/video", {
                 method: "POST",
                 body: data,
             })
 
-            var json = await response.json()
+            var file = await FileSystem.downloadAsync(
+                "http://" + getIpAddress() + "/video",
+                FileSystem.documentDirectory + 'ColorIdentifier/IdentifiedColor/sample3.mp4'
+            )
+
+            console.log(file)
 
             alert("Colors Identification Success!");
 
-             this.setState({
-                detectedObjects: json
-            })
+            this.setState({ capturedImage: file , savingImage : false, modalVisible: true })
+            
+            // response = await fetch("http://" + getIpAddress() + "/vidpredict", {
+            //     method: "POST",
+            //     body: data,
+            // })
 
-            this.setState({  savingImage : false, modalVisible: true })
+            // var json = await response.json();
 
+            // console.log(json)
 
         }catch(error){
             console.log(error)
@@ -149,7 +170,7 @@ export default class CameraView extends React.Component {
                     style={styles.imageModal}
                     animationType="fade"
                     visible={this.state.modalVisible}
-                    onRequestClose={() => this.setState({modalVisible : false, detectedObjects: []})}
+                    onRequestClose={() => this.setState({modalVisible : false})}
                     >
                     <View style={styles.imageModal}>
 
@@ -163,7 +184,7 @@ export default class CameraView extends React.Component {
                             backgroundColor: 'rgba(0,0,0,0)'
                         }}>
                             <Appbar.BackAction
-                            onPress={() => this.setState({modalVisible : false, detectedObjects: []})}
+                            onPress={() => this.setState({modalVisible : false}) }
                             />
                             <Appbar.Content
                                 title="Captured Image"
@@ -174,64 +195,21 @@ export default class CameraView extends React.Component {
                         </Appbar>
 
                         <View style={styles.imageModalContainer} >
-                            {capturedImage ? <Image 
-                            source={{uri: capturedImage.uri }} 
-                            style={styles.imageFullsize}
-                            resizeMode='contain'
-                            /> : <Text>No Image Captured</Text>}
-                        </View>
-
-                        <View style={
-                            [
-                            StyleSheet.absoluteFill,
-                            {
-                                flex: 1,
-                                paddingTop:100,
-                                paddingBottom:100,
-                                paddingLeft: 20,
-                                paddingRight:20
-                            }
-                            ]
-                        }>
-                            {
-                            capturedImage ?  <Svg 
-                                style={{
-                                flex: 1,
-                                width: null,
-                                height:null,
-                                alignSelf: 'stretch'
-                            }}
-                            height="100%" width="100%" viewBox={"0 0 " + capturedImage.width + " " + capturedImage.height}>
+                        {this.state.capturedImage ? <Video
+                            source={{ uri: this.state.capturedImage.uri }}
+                            useNativeControls={true}
+                            rate={1.0}
+                            volume={1.0}
+                            isMuted={false}
+                            resizeMode={Video.RESIZE_MODE_CONTAIN}
+                            onPlaybackStatusUpdate={this.onPlaybackStatusUpdate}
+                            shouldPlay={true}
+                            isLooping={true}
                             
-                            {this.state.detectedObjects.map((detectedObject) => {
-                            return (<View>
-                                
-                                <SVGText
-                                    fill="#fff"
-                                    stroke="black"
-                                    fontSize="100"
-                                    fontWeight="bold"
-                                    x={detectedObject.topleft.x}
-                                    y={detectedObject.topleft.y - 50}
-                                    textAnchor="start"
-                                    >
-                                    {detectedObject.color ?? 'No Color Detected'}
-                                    </SVGText>
-                                    
-                                    <Rect
-                                    x={detectedObject.topleft.x}
-                                    y={detectedObject.topleft.y}
-                                    width={detectedObject.bottomright.x - detectedObject.topleft.x}
-                                    height={detectedObject.bottomright.y - detectedObject.topleft.y}
-                                    fill="rgb(0,0,0,0)"
-                                    stroke="blue"
-                                    strokeWidth="50"
-                                    />
-                                </View>)
-                                })}
-                        </Svg> : null
-                        }
-                        </View>
+                            onReadyForDisplay={this.onReadyForDisplay}
+                            style={styles.imageFullsize}
+                            /> : <Text>No Image Selected</Text>}
+                    </View>
                     </View>
                 </Modal>
 

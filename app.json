@@ -21,6 +21,11 @@
     },
     "assetBundlePatterns": [
       "**/*"
-    ]
+    ],
+    "description": "",
+    "android": {
+      "package": "com.coloridentity.identifier",
+      "versionCode": 1
+    }
   }
 }

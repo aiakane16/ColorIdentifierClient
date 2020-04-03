@@ -14,8 +14,6 @@ const styles = StyleSheet.create({
       top: StatusBar.currentHeight,
       left: 0,
       right: 0,
-      flex:1,
-      justifyContent: 'flex-end'
     },
     bottom: {
       position: 'absolute',
@@ -53,8 +51,13 @@ const styles = StyleSheet.create({
       backgroundColor: "rgba(0,0,0,0.9)"
     },
     imageModalContainer : {
-      width: Dimensions.get('window').width,
-      height: Dimensions.get('window').height/2,
+      flex: 1,
+      // width: Dimensions.get('window').width,
+      // height: Dimensions.get('window').height - 200,
+      paddingTop:100,
+      paddingBottom:100,
+      paddingLeft: 20,
+      paddingRight:20
     },
     imageFullsize : {
       borderColor: "#FFFFFF",
