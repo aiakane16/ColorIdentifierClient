@@ -11,6 +11,7 @@ import { createStackNavigator } from '@react-navigation/stack';
 import styles from '../styles';
 import _ from 'lodash';
 import Svg, { Circle, Rect, Text as SVGText } from 'react-native-svg';
+import RNFetchBlob from 'rn-fetch-blob';
 
 export default class VideoGallery extends Component {
 
@@ -87,30 +88,30 @@ export default class VideoGallery extends Component {
                 type: 'video/mp4'
             });
     
-            var response = await fetch("http://" + getIpAddress() + "/video", {
-                method: "POST",
-                body: data,
-            })
-
-            var file = await FileSystem.downloadAsync(
-                "http://" + getIpAddress() + "/video",
-                FileSystem.documentDirectory + 'ColorIdentifier/IdentifiedColor/sample3.mp4'
-            )
-
-            // response = await fetch("http://" + getIpAddress() + "/vidpredict", {
+            // var response = await fetch("http://" + getIpAddress() + "/video", {
             //     method: "POST",
             //     body: data,
             // })
 
-            // var json = await response.json();
+            // var file = await FileSystem.downloadAsync(
+            //     "http://" + getIpAddress() + "/video",
+            //     FileSystem.documentDirectory + 'ColorIdentifier/IdentifiedColor/sample3.mp4'
+            // )
 
-            // console.log(photo,json,json.length)
+            var response = await fetch("http://" + getIpAddress() + "/vidpredict", {
+                method: "POST",
+                body: data,
+            })
 
-            // this.setState({detectedObjectsPerFrame : json})
+            var json = await response.json();
+
+            this.setState({detectedObjectsPerFrame : json})
+
+            this.setState({ detectedObjects : json[0]})
 
             alert("Colors Identification Success!");
     
-            this.setState({ chosenImage: file, savingImage : false, modalVisible: true })
+            this.setState({  savingImage : false, modalVisible: true })
     
     
         }catch(error){
@@ -120,6 +121,66 @@ export default class VideoGallery extends Component {
             this.setState({ savingImage : false, modalVisible: false })
     
         }
+    }
+
+    readFileStream = async(photo) => {
+        var { uri } = photo
+        var { getIpAddress } = this.props.route.params;
+
+        var data = "";
+        console.log('recording start')
+        try{
+        await new Promise((resolve,reject) => {
+            const ws = new WebSocket('ws://192.168.254.158:3000');
+
+            ws.onopen = async (event) => {
+            console.log('ws opened')
+            
+            this.stream = await RNFetchBlob.fs.readStream(
+                uri,
+                "base64",
+                1024 * 1024 * 100
+            );
+
+            this.stream.onEnd(() => {
+                console.log('stream end')
+                ws.close();
+                resolve(uri)
+            });
+
+            this.stream.onError(reject);
+
+            this.stream.onData(chunk => {
+                data += chunk
+
+                var obj = {
+                message : chunk
+                };
+
+                var stringobj = JSON.stringify(obj)
+                ws.send(chunk);
+            }); // Append the data
+
+            this.stream.open(); // Start consuming
+            }
+
+            ws.onclose = () => {
+            console.log('closed')
+            }
+
+            ws.onerror = (error ) => {
+                console.log(error)
+            }
+
+            ws.onmessage = (msg) => {
+                console.log(msg)
+            }
+        })
+
+        }catch(e){
+        console.log(e)
+        }
+   
     }
 
     onReadyForDisplay = (videoSettings) => {
@@ -162,6 +223,11 @@ export default class VideoGallery extends Component {
         this.props.navigation.navigate('VideoCapture', { viewImage: this.viewImage })
     }
 
+    liveCamera = () => {
+        this.setState({menuVisible: false})
+        this.props.navigation.navigate('LiveCapture', { viewImage: this.viewImage })
+    }
+
     componentDidMount = async () =>{
         const cameraRollPermission = await Permissions.askAsync(Permissions.CAMERA_ROLL)
 
@@ -190,17 +256,34 @@ export default class VideoGallery extends Component {
 
     }
 
-    onPlaybackStatusUpdate = (data) => {
+    onPlaybackStatusUpdate = (playbackStatus) => {
 
         // var { frame } = this.state
 
-        // if(this.state.detectedObjectsPerFrame.length != 0 ){
-        //     this.setState({ detectedObjects: this.state.detectedObjectsPerFrame[frame] })
-        //     this.setState({ frame : frame + 1 })
+        // if(this.state.frame == this.state.detectedObjectsPerFrame.length ){
+        //     this.setState({ frame : 0 })
         // }
         
-        // if(data.didJustFinish){
-        //     this.setState({frame : 0})
+        // console.log(frame)
+
+        // if(this.state.detectedObjectsPerFrame.length != 0 ){
+        //     if(this.state.frame < this.state.detectedObjectsPerFrame.length - 1)
+        //         this.setState({ detectedObjects: this.state.detectedObjectsPerFrame[frame] })
+        //         this.setState({ frame : frame + 1 })
+        // }
+
+        // var { frame } = this.state;
+        // if(playbackStatus.isPlaying){
+        //     while(frame < this.state.detectedObjectsPerFrame.length){
+        //         this.setState({ detectedObjects : this.state.detectedObjectsPerFrame[frame] })
+        //         frame++;
+        //         console.log(frame)
+        //         this.setState({ frame })
+        //     }
+
+        //     // if(playbackStatus.isLooping && this.state.frame == this.state.detectedObjectsPerFrame.length){
+        //     //     this.setState({ frame : 0 })
+        //     // }
         // }
     }
 
@@ -220,7 +303,8 @@ export default class VideoGallery extends Component {
                             onDismiss={()=> this.setState({menuVisible: false}) }
                             anchor={<Appbar.Action icon="dots-vertical" color={'#fff'} onPress={()=> this.setState({menuVisible: true})} />}
                         >
-                        <Menu.Item icon="video"  onPress={this.showCamera} title="Record" />
+                        {/* <Menu.Item icon="video"  onPress={this.showCamera} title="Record" /> */}
+                        {/* <Menu.Item icon="video-vintage"  onPress={this.liveCamera} title="Live" /> */}
                         <Divider />
                         <Menu.Item icon="help-circle"  onPress={this.showColorList} title="About" />
                         </Menu>
@@ -289,6 +373,7 @@ export default class VideoGallery extends Component {
                             subtitle="Raw Image"
                         />
                         {this.state.savingImage ? <ActivityIndicator animating={true} color={Colors.white} /> : <Appbar.Action icon="magnify" color={'#fff'} onPress={() => { this.saveImage(chosenImage) }} />}
+                        <Appbar.Action icon="save" color={'#fff'} onPress={() => { this.readFileStream(chosenImage) }} />
                         </Appbar>
 
                         <View style={{
@@ -309,7 +394,7 @@ export default class VideoGallery extends Component {
                                 isLooping={true}
                                 onReadyForDisplay={this.onReadyForDisplay}
                                 style={styles.imageFullsize}
-                                progressUpdateIntervalMillis={40}
+                                progressUpdateIntervalMillis={50}
                                 onPlaybackStatusUpdate={this.onPlaybackStatusUpdate}
                                 /> : <Text>No Video Selected</Text>}
                         </View>
@@ -358,7 +443,7 @@ export default class VideoGallery extends Component {
                               height={detectedObject.bottomright.y - detectedObject.topleft.y}
                               fill="rgb(0,0,0,0)"
                               stroke="blue"
-                              strokeWidth="50"
+                              strokeWidth="20"
                             />
                           </View>)
                           })}

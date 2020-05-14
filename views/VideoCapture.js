@@ -1,7 +1,7 @@
 import React, { Component, Fragment } from 'react'
 import { View, StatusBar, Modal, Text, Image } from 'react-native'
 import { Appbar, Menu, Divider, ActivityIndicator, Colors } from 'react-native-paper'
-import { Camera } from 'expo-camera';
+import { RNCamera as Camera } from 'react-native-camera';
 import * as Permissions from 'expo-permissions';
 import * as MediaLibrary from 'expo-media-library';
 import * as FileSystem from 'expo-file-system';
@@ -23,6 +23,8 @@ export default class VideoCapture extends React.Component {
         capturing: false,
         menuVisible: false,
         savingImage: false,
+        detectedObjects: [],
+        detectedObjectsPerFrame: []
     }
 
     setCameraPermission = hasCameraPermission => this.setState({ hasCameraPermission })
@@ -52,8 +54,14 @@ export default class VideoCapture extends React.Component {
         // await this.captureImage()
     }
 
-    onPlaybackStatusUpdate = async (data) => {
-        // console.log(data)
+    onPlaybackStatusUpdate = async (playbackStatus) => {
+        // var i = 0;
+        // if(playbackStatus.isPlaying){
+        //     while(i < this.state.detectedObjectsPerFrame.length){
+        //         this.setState({ detectedObjects : detectedObjectsPerFrame[i] })
+        //         i++;
+        //     }
+        // }
     }
 
     captureImage = async (resolve) => {
@@ -109,18 +117,20 @@ export default class VideoCapture extends React.Component {
 
             console.log(file)
 
+            response = await fetch("http://" + getIpAddress() + "/vidpredict", {
+                method: "POST",
+                body: data,
+            })
+
+            var json = await response.json();
+
+            this.setState({detectedObjectsPerFrame : json})
+
             alert("Colors Identification Success!");
 
             this.setState({ capturedImage: file , savingImage : false, modalVisible: true })
             
-            // response = await fetch("http://" + getIpAddress() + "/vidpredict", {
-            //     method: "POST",
-            //     body: data,
-            // })
-
-            // var json = await response.json();
-
-            // console.log(json)
+            
 
         }catch(error){
             console.log(error)
@@ -205,7 +215,6 @@ export default class VideoCapture extends React.Component {
                             onPlaybackStatusUpdate={this.onPlaybackStatusUpdate}
                             shouldPlay={true}
                             isLooping={true}
-                            
                             onReadyForDisplay={this.onReadyForDisplay}
                             style={styles.imageFullsize}
                             /> : <Text>No Image Selected</Text>}

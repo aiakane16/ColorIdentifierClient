@@ -13,6 +13,7 @@ import theme from './theme';
 import GalleryNavigator from './component/GalleriesNavigator';
 import VideoGalleryNavigator from './component/VideoGalleryNavigator';
 import Settings from './component/Settings'
+import * as SplashScreen from 'expo-splash-screen';
 
 const Stack = createStackNavigator();
 
@@ -29,6 +30,11 @@ var settings = {
     console.log(this.ipAddress)
   }
 }
+
+// Prevent native splash screen from autohiding before App component declaration
+SplashScreen.preventAutoHideAsync()
+  .then(result => console.log(`SplashScreen.preventAutoHideAsync() succeeded: ${result}`))
+  .catch(console.warn); // it's good to explicitly catch and inspect any error 
 
 function Main() {
 

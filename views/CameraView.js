@@ -1,7 +1,7 @@
 import React, { Component, Fragment } from 'react'
 import { View, StatusBar, Modal, Text, Image, StyleSheet } from 'react-native'
 import { Appbar, Menu, Divider, ActivityIndicator, Colors } from 'react-native-paper'
-import { Camera } from 'expo-camera';
+import { RNCamera as  Camera } from 'react-native-camera';
 import * as Permissions from 'expo-permissions';
 import * as MediaLibrary from 'expo-media-library';
 import * as FileSystem from 'expo-file-system';
@@ -23,7 +23,8 @@ export default class CameraView extends React.Component {
         capturing: false,
         menuVisible: false,
         savingImage: false,
-        detectedObjects: []
+        detectedObjects: [],
+        camera: null,
     }
 
     setCameraPermission = hasCameraPermission => this.setState({ hasCameraPermission })
@@ -50,11 +51,15 @@ export default class CameraView extends React.Component {
     captureImage = async (resolve) => {
         try{
             var photoData = await this.camera.takePictureAsync();
+
+            console.log(photoData)
     
             var savedPhoto = await MediaLibrary.createAssetAsync(photoData.uri)
     
             // const album = await MediaLibrary.createAlbumAsync('ColorIdentifier', savedPhoto);
 
+            // console.log(album)
+            
             var { uri , height , width } = savedPhoto;
 
             this.setState({ 

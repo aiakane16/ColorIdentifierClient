@@ -1,5 +1,5 @@
 import React from 'react';
-import { Camera } from 'expo-camera';
+import { RNCamera as Camera } from 'react-native-camera';
 import { Ionicons } from '@expo/vector-icons';
 import { Col, Row, Grid } from "react-native-easy-grid";
 import { View, TouchableWithoutFeedback, TouchableOpacity, Text } from 'react-native';

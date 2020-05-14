@@ -3,6 +3,7 @@ import * as React from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
 import VideoGallery from '../views/VideoGallery'
 import VideoCapture from '../views/VideoCapture'
+import LiveCapture from '../views/LiveCapture'
 
 export default class VideoGalleryNavigator extends React.Component { 
     render(){
@@ -28,6 +29,15 @@ export default class VideoGalleryNavigator extends React.Component {
                     }}
                     initialParams={this.props.route.params}
                 />
+                {/* <Stack.Screen 
+                    name="LiveCapture" 
+                    component={LiveCapture} 
+                    options={{
+                        title:"Live Capture",
+                        headerShown: false,
+                    }}
+                    initialParams={this.props.route.params}
+                /> */}
             </Stack.Navigator>
         )
     }
